@@ -12,7 +12,7 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API"))
 
 # Function to generate response using the Gemini model
-def text_to_text_chatbot(question):
+def text_chatbot(question):
     model = genai.GenerativeModel('gemini-1.5-pro')
     response = model.generate_content(question)
     return response.text
@@ -29,18 +29,19 @@ def run_chatbot_app():
             str.markdown(message["content"])
 
     # Input from the user
-    if prompt := str.chat_input("What is your question?"):
-        str.session_state.messages.append({"role": "user", "content": prompt})
+    if pro := str.chat_input("What is your question?"):
+        str.session_state.messages.append({"role": "user", "content": pro})
         with str.chat_message("user"):
-            str.markdown(prompt)
+            str.markdown(pro)
 
         # Get response from Google Gemini
-        response_text = text_to_text_chatbot(prompt)  # Call the function to get the response
+        res = text_chatbot(pro)  # Call the function to get the response
+
 
         # Append the assistant's response to the messages
-        str.session_state.messages.append({"role": "assistant", "content": response_text})
+        str.session_state.messages.append({"role": "assistant", "content": res})
         with str.chat_message("assistant"):
-            str.markdown(response_text)
+            str.markdown(res)
 
 if __name__ == "__main__":
     run_chatbot_app()

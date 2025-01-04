@@ -1,34 +1,75 @@
-import pandas as pd
-import numpy as np
-import random
+# image_chatbot.py
 
-# Function to generate a synthetic dataset
-def generate_synthetic_data(num_rows=500):
-    data = {
-        'Gender': np.random.choice(['M', 'F'], size=num_rows),
-        'Age': np.random.randint(18, 60, size=num_rows),
-        'Name': ['Person_' + str(i) for i in range(1, num_rows + 1)],
-        'Diabetes': np.random.choice(['Y', 'N'], size=num_rows),
-        'Weight': [str(random.randint(50, 100)) + ' kg' for _ in range(num_rows)],
-        'Wanna Loose Weight': np.random.choice(['YES', 'NO'], size=num_rows),
-        'Height': [str(random.randint(150, 190)) + ' cm' for _ in range(num_rows)],
-        'BMI': np.round(np.random.uniform(18.5, 30, num_rows), 2),
-        'Calories': np.random.choice([1800, 2000, 2200, 2400, 2600, 2800, 3000, 3100], size=num_rows),
-        'Exercise': np.random.choice(['Sedentary', 'Lightly Active', 'Moderate', 'Very Active', 'Super Active'], size=num_rows),
-        'Workout': np.random.choice(['Sedentary Lifestyle', 'Light Exercise', 'Moderate Exercise', 'High intensity Exercise'], size=num_rows),
-        'Meal Type': np.random.choice(['V', 'NV'], size=num_rows),
-        'Diet': np.random.choice(['Balanced Diet', 'Energy boost diet', 'Light Activity Fuel', 'Fitness Diet'], size=num_rows)
-    }
+from dotenv import load_dotenv  # type: ignore
+import os
+import google.generativeai as genai  # type: ignore
+import streamlit as st  # Import Streamlit
+from PIL import Image  # For image processing
+import pytesseract  # For OCR
 
-    # Create a DataFrame from the generated data
-    df = pd.DataFrame(data)
-    return df
+# Load environment variables
+load_dotenv()
 
-# Generate the synthetic data with 500 rows
-synthetic_data = generate_synthetic_data(500)
+# Configure API key for Google Gemini
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# Display the first few rows of the generated dataset
-print(synthetic_data.head())
+# Function to generate response using the Gemini model
+def text_to_text_chatbot(question):
+    model = genai.GenerativeModel('gemini-1.5-pro')
+    response = model.generate_content(question)
+    return response.text
 
-# Save the generated data to a CSV file
-synthetic_data.to_csv('synthetic_diet_data.csv', index=False)
+# Function to extract text from an image
+def extract_text_from_image(image):
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # Update this path as necessary
+    text = pytesseract.image_to_string(image)
+    return text
+
+def run_image_chatbot():
+    st.title("Image Descriptor Chatbot")
+
+    if "image_messages" not in st.session_state:
+        st.session_state.image_messages = []
+
+    # Upload image
+    uploaded_file = st.file_uploader("Upload an image with your question", type=["jpg", "jpeg", "png"])
+
+    if uploaded_file is not None:
+        # Load the image
+        image = Image.open(uploaded_file)
+        # Extract text from the image
+        extracted_text = extract_text_from_image(image)
+
+        if extracted_text:
+            user_message = {"role": "user", "content": extracted_text}
+            st.session_state.image_messages.append(user_message)
+            with st.chat_message(user_message["role"]):
+                st.markdown(user_message["content"])
+
+            # Get response from Google Gemini
+            response_text = text_to_text_chatbot(extracted_text)  # Call the function to get the response
+
+            assistant_message = {"role": "assistant", "content": response_text}
+            st.session_state.image_messages.append(assistant_message)
+            with st.chat_message(assistant_message["role"]):
+                st.markdown(assistant_message["content"])
+        else:
+            st.warning("No text found in the image. Please try another image.")
+
+    # Input from the user (optional)
+    if prompt := st.chat_input("What is your question?"):
+        user_message = {"role": "user", "content": prompt}
+        st.session_state.image_messages.append(user_message)
+        with st.chat_message(user_message["role"]):
+            st.markdown(user_message["content"])
+
+        # Get response from Google Gemini
+        response_text = text_to_text_chatbot(prompt)  # Call the function to get the response
+
+        assistant_message = {"role": "assistant", "content": response_text}
+        st.session_state.image_messages.append(assistant_message)
+        with st.chat_message(assistant_message["role"]):
+            st.markdown(assistant_message["content"])
+
+if __name__ == "__main__":
+    run_image_chatbot()
